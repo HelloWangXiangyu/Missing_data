@@ -47,14 +47,14 @@ python DeepMVI_main.py
 > - [x] Github repository 
 
 ### (**2022-01-13 --- 2022-01-28**)
-> Paper 1: SSIM—A Deep Learning Approach for Recovering Missing Time Series Sensor Data  
+> [Paper 1: SSIM—A Deep Learning Approach for Recovering Missing Time Series Sensor Data](https://ieeexplore.ieee.org/document/8681112)
 > - [x] VLSW train sample generation algorithm
 > - [x] Seq2Seq with Luong global attention model
 > - [x] Missing data imputation and evaluation
 > - [x] Paper chapter drafting  
 
 ### (**2022-01-28 --- 2022-02-28**)  
-> Paper 2: Missing Value Imputation on Multidimensional Time Series
+> [Paper 2: Missing Value Imputation on Multidimensional Time Series](https://arxiv.org/abs/2103.01600)
 > - [x] Literature/code review on attention mechanism and transformer model
 > - [x] Literature/code review on GANs
 > - [x] Sample generator coding  
