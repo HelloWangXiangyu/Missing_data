@@ -32,6 +32,7 @@ cudnn 8.2.1
 - Run main  
 ```base
 python SSIM_main.py
+python DeepMVI_main.py
 ```
 
 ## Progress Report
