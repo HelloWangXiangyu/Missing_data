@@ -1,6 +1,6 @@
 # Problem 1 - Missing data
 
-![](https://progress-bar.dev/25/?title=Overall) ![](https://img.shields.io/badge/windows-passing-greenn)  
+![](https://progress-bar.dev/35/?title=Overall) ![](https://img.shields.io/badge/windows-passing-greenn)  
 Algorithms implementation for missing data imputation.  
 
 
@@ -40,25 +40,26 @@ python SSIM_main.py
    (Final exam grading/lab demo)
 
 ### (**2021-12-24 --- 2022-01-12**)
-
 > - [x] Background theory/knowledge organizing
-> - [x] Papers/books reading  
+> - [x] Papers/books reading on RNNs 
 > - [x] Code (original paper) debugging
 > - [x] Github repository 
 
 ### (**2022-01-13 --- 2022-01-28**)
-
 > Paper 1: SSIM—A Deep Learning Approach for Recovering Missing Time Series Sensor Data  
 > - [x] VLSW train sample generation algorithm
 > - [x] Seq2Seq with Luong global attention model
 > - [x] Missing data imputation and evaluation
 > - [x] Paper chapter drafting  
 
-## To-Do List
-### (**2022-01-28 --- 2022-02-15**)
+### (**2022-01-28 --- 2022-02-28**)  
+> Paper 2: Missing Value Imputation on Multidimensional Time Series
+> - [x] Literature/code review on attention mechanism and transformer model
+> - [x] Literature/code review on GANs
+> - [x] Sample generator coding  
 
-Paper 2: Missing Value Imputation on Multidimensional Time Series
-- [ ] Temporal transformer model
+## To-Do List
+- [ ] Temporal transformer model (under-going)
 - [ ] Paper chapter drafting
 
 Paper 3: Learning from Irregularly-Sampled Time Series: A Missing Data Perspective
@@ -68,6 +69,8 @@ Paper 3: Learning from Irregularly-Sampled Time Series: A Missing Data Perspecti
 Paper 4: NAOMI: Non-autoregressive Multiresolution Sequence Imputation
 - [ ] Non-autogressive GAN model
 - [ ] Paper done
+
+Problem 2) SDE GAN
 
 ## Comment
 ```bash  

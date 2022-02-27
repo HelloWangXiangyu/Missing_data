@@ -1,20 +1,25 @@
-############################################
+###################################################
 # Train-test sampling generator wrapper
 # Algorithms shown in the follwing papers
 # 1. VLSW: DOI: 10.1109/JIOT.2019.2909038
+#    ('min_input_len' for more train samples)
 # 2. GLW: for comparison purpose
-# 3. 'min_input_len' for more train samples
+# 3. Transformer: https://arxiv.org/abs/2103.01600
 # by Wang Xiangyu
-############################################
+###################################################
+import copy
+from tokenize import maybe
+import tensorflow as tf
 
 from sklearn.preprocessing import MinMaxScaler
 from algorithm_kernels import *
+from data_loader import Transformer_Dataset_AM, Transformer_Dataset_SMRT, Transformer_Dataset_index
 
+#------------------------------------ SSIM -------------------------------------#
 # Variable Length Sliding Window algorithm
 def VLSW(x, name):
-    '''
-    Initialize default parameters
-    (train and test samples share the same paras)
+    '''Initialize default parameters
+       (train and test samples share the same paras)
     # Input:
         x - DataFrame: input X with multiple features (timestep,dims)
         name- str: mark output Y one feature of X (timesetp,)
@@ -91,4 +96,143 @@ def GSW(dr, input_len=200, output_len=10):
         out_.append(x_norm[(i+input_len):(i+input_len+output_len),range(1)].tolist())
     
     return np.array(in_), np.array(out_)
+
+#------------------------------------ DeepMVI -------------------------------------#
+# Test missing block is blackout or not. well-constraint
+# This func has some problem to be solved, not very stricted / general.
+def is_blackout(matrix):
+    arr = (np.sum(np.isnan(matrix).astype(np.int), axis=1) == matrix.shape[1])
+    return arr.astype(np.int).sum() > 0
+
+# Generate validation data
+def transformer_val(matrix, missing_num):
+    ''' "make_validation" in the paper.
+    # Input:
+        matrix - 2D numpy array: normailized data with NaN
+        missing_num - int
+    # Output:
+    
+    '''
+    # Padded - following snippet accommodate more complicated situation
+    nan_mask = np.isnan(matrix)
+    sandw_mat = np.concatenate([np.zeros((1, nan_mask.shape[1])), nan_mask, 
+                                np.zeros((1, nan_mask.shape[1]))], axis=0)
+    indi_mat = (sandw_mat[1:,:]-sandw_mat[:-1,:]).T
+    pos_start = np.where(indi_mat==1)
+    pos_end = np.where(indi_mat==-1)
+    lens = (pos_end[1]-pos_start[1])[:,None]
+    start_index = pos_start[1][:,None]
+    time_series = pos_start[0][:,None]
+    test_points = np.concatenate([start_index, time_series, lens], axis=1)
+    temp = np.copy(test_points[:,2])
+    # define block size: ??? why divided by 10
+    if (temp.shape[0]>1):
+        block_size = temp[int(temp.shape[0]/10):-int(temp.shape[0]/10)-1].mean()
+    else:
+        block_size = temp.mean()
+    w = int(10*np.log10(block_size))
+    val_block_size = int(min(block_size,w))
+    # ??? missing_num ??? why use val_block_size to divide
+    missing_num = int(missing_num/val_block_size)
+    train_mat = copy.deepcopy(matrix)
+    val_points = []
+    
+    for _ in range(missing_num):
+        # Draw samples from a uniform distribution (low, high, size:block_num)
+        validation_points = np.random.uniform(0, matrix.shape[0]-val_block_size, 
+                                              matrix.shape[1]).astype(np.int)
+        for i,x in enumerate(validation_points):
+            train_mat[x:x+val_block_size,i] = np.nan
+            val_points.append([x,i,val_block_size])
+    return train_mat, matrix, np.array(val_points), test_points, int(block_size), w
+
+# Transformer recovery
+def transformer_recovery(input_feats, missing_num):
+    '''Main func of temporal transformer method.
+    # Input:
+        input_feats - 2D numpy array: 10 dim features
+                      padded with NaN
+    # Output:
+        output_feats - 2D numpy array: imputed matrix
+    '''
+    print('---------- start ----------')
+    
+    # Normalization
+    mean = np.nanmean(input_feats, axis=0)
+    std = np.nanstd(input_feats, axis=0)
+    input_feats = (input_feats-mean)/std
+    
+    # Validation data generation
+    # ??? 
+    missing_num = 10*min(max(int(input_feats.shape[0]/100), 1), 500)
+    train_feats, val_feats, val_points, test_points, block_size, kernel_size  = transformer_val(
+        input_feats, missing_num)
+    
+    time_context = min(int(input_feats.shape[0]/2), 30*kernel_size)
+    
+    use_embed = (not is_blackout(input_feats))
+    use_context = (block_size <= kernel_size)
+    use_local = (block_size < kernel_size)
+    
+    print('Block size is %d, kernel size is %d'%(block_size, kernel_size))
+    print('Use Kernel Regression : ', use_embed)
+    print('Use Context in Keys :', use_context)
+    print('Use Local Attention :', use_local)
+    
+    buffer_size = input_feats.shape[0]*input_feats.shape[1]
+    batch_size = min(input_feats.shape[1]*int(input_feats.shape[0]/time_context), 16)
+    interval = 1000
+    
+    # Instantiate data sequence for each split
+    train_set_SMRT = Transformer_Dataset_SMRT(train_feats, use_local, time_context=time_context)
+    train_set_AM = Transformer_Dataset_AM(train_feats, use_local, time_context=time_context)
+    train_set_index = Transformer_Dataset_index(train_feats)
+    train_loader_SMRT = tf.data.Dataset.from_generator(
+        train_set_SMRT,
+        output_types=(
+            tf.float32,
+            tf.bool,
+            tf.float32,
+            tf.int32
+            ),
+        output_shapes=(
+            tf.TensorShape([None,]),
+            tf.TensorShape([None,]),
+            tf.TensorShape([None,None]),
+            tf.TensorShape([None])
+            )
+        ) 
+    train_loader_index = tf.data.Dataset.from_generator(
+        train_set_index,
+        output_types=(tf.int32,
+                      tf.int8
+                      ),
+        output_shapes=(tf.TensorShape([None]),
+                       tf.TensorShape(())
+                       )
+        )
+    train_loader_AM = tf.data.Dataset.from_generator(
+        train_set_AM,
+        output_types=tf.float32,
+        output_shapes=tf.TensorShape([None,None])
+        )
+    
+    train_loader_SMRT = train_loader_SMRT.padded_batch(batch_size)
+    train_loader_index = train_loader_index.batch(batch_size)
+    train_loader_AM = train_loader_AM.padded_batch(batch_size, padding_values=float('-inf'))
+    train_loader = tf.data.Dataset.zip((train_loader_SMRT, train_loader_index, train_loader_AM)).shuffle(buffer_size)
+    
+    print(next(iter(train_loader)))
+    '''
+    for attn_mask in train_loader_AM:
+        print(tf.transpose(attn_mask, perm=(0,2,1)))
+    
+    for idx, stat_time in train_loader_index:
+        print(idx)    
+    
+    for series, mask, residuals, time_vector in train_loader_SMRT:
+        print(list(series))
+    
+    return 
+    '''
 
