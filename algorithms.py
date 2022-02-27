@@ -13,7 +13,6 @@ import tensorflow as tf
 
 from sklearn.preprocessing import MinMaxScaler
 from algorithm_kernels import *
-from data_loader import Transformer_Dataset_AM, Transformer_Dataset_SMRT, Transformer_Dataset_index
 
 #------------------------------------ SSIM -------------------------------------#
 # Variable Length Sliding Window algorithm
@@ -145,6 +144,25 @@ def transformer_val(matrix, missing_num):
             train_mat[x:x+val_block_size,i] = np.nan
             val_points.append([x,i,val_block_size])
     return train_mat, matrix, np.array(val_points), test_points, int(block_size), w
+
+# MCAR / Blockout missing data generator; similar format to "gen_md"
+def gen_md_transformer(df, missing_rate=0.05, length=10):
+    '''
+    Missing blocks were padded with NaN
+    # Input:
+        df - DataFrame: daily return
+    # Output:
+        matrix_pad_nan - 2D  numpy array with NaN
+        missing_num - int :60
+    '''
+    missing_rows = np.round(int(len(df)*missing_rate), -1)
+    seg_num = int(missing_rows/length)
+    seg_len = int(len(df)/seg_num)
+    # Randomly pick a start point of corres local seg
+    rand_sp = np.random.randint(seg_len-3*length, size=seg_num)
+    nan_idx = [list(range(i, i+length)) for i in rand_sp+range(length, len(df), seg_len)[:seg_num]]
+    df.iloc[np.array(nan_idx).flatten(), :] = np.nan
+    return df.values, seg_num*len(df.columns)   #return matrix_pad_nan
 
 # Transformer recovery
 def transformer_recovery(input_feats, missing_num):

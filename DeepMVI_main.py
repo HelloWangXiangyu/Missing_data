@@ -10,7 +10,7 @@
 #############################################################
 
 from data_loader import *
-from algorithms import transformer_recovery
+from algorithms import *
 
 ####################################################################
 ########################## Missing Value ###########################
