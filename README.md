@@ -59,6 +59,7 @@ python SSIM_main.py
 > - [x] Sample generator coding  
 
 ## To-Do List
+Paper 2: Missing Value Imputation on Multidimensional Time Series
 - [ ] Temporal transformer model (under-going)
 - [ ] Paper chapter drafting
 
